@@ -4,6 +4,7 @@ using Microsoft.VisualBasic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 using static System.Text.Json.JsonSerializer;
 
 
@@ -104,7 +105,7 @@ app.MapPost("/SavePaymentCollection", async (HttpContext context) =>
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
-            Title = ex.Message,
+            Title = $"Internal Server Error : {ex.Message}",
             Detail = ex.ToString()
         };
         return Results.Problem(problemDetails);
@@ -167,7 +168,7 @@ app.MapPost("/itemlist", async (HttpContext context) =>
                        .ToDictionary(col => col.ColumnName, col => row[col]));
         cln = new Dictionary<string, object>()
         {
-            { "Status", data is null ? "Customer not found" : "Success"},
+            { "Status", data is null ? "Item not found" : "Success"},
             { "StatusCode", data is null ? StatusCodes.Status204NoContent: StatusCodes.Status200OK },
             { "Data", data }
         };
@@ -179,7 +180,7 @@ app.MapPost("/itemlist", async (HttpContext context) =>
         var problemDetails = new ProblemDetails
         {
             Status = StatusCodes.Status500InternalServerError,
-            Title = "Internal Server Error",
+            Title = $"Internal Server Error : {ex.Message}",
             Detail = ex.ToString()
         };
         return Results.Problem(problemDetails);
@@ -317,7 +318,75 @@ app.MapPut("/updateDemand", async (HttpContext context) =>
         ProblemDetails problemDetails = new()
         {
             Status = StatusCodes.Status500InternalServerError,
-            Title = "Internal Server Error: Demand could not be updated",
+            Title = $"Internal Server Error : {ex.Message}",
+            Detail = ex.ToString()
+        };
+        return Results.Problem(problemDetails);
+    }
+    finally
+    {
+        conn.Close();
+    }
+});
+
+app.MapPost("/orderList", async (HttpContext context) =>
+{
+    DataTable dt = new();
+    Dictionary<string, object> cln;
+    dynamic? data = null;
+    try
+    {
+        //var requestData = await context.Request.ReadFromJsonAsync<Demand>();
+        dynamic requestData = null;
+        if (context.Request.ContentType == "application/json")
+            requestData = await context.Request.ReadFromJsonAsync(type: new string("").GetType());
+
+        if (context.Request.ContentType == "application/x-www-form-urlencoded")
+            requestData = await context.Request.ReadFormAsync();
+
+        if (requestData is null) return Results.BadRequest("Request are invalid");
+
+        string CustomerId = requestData["CustomerId"];
+        string date = requestData["date"];
+
+        if (CEmp(CustomerId)) return BadRequest("CustomerId");
+        //if (CEmp(date)) return BadRequest("Date");
+        using (SqlCommand cmd = new("[SP_GetOrderList]", conn))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = 50;
+            cmd.Parameters.AddRange(
+                new SqlParameter[]
+                {
+                    new SqlParameter("@CustomerId", CustomerId)
+                }
+            );
+            using (SqlDataAdapter adptr = new(cmd))
+            {
+                await conn.OpenAsync();
+                adptr.Fill(dt);
+            }
+        }
+        var rows = dt != null && dt.Rows.Count > 0 ? dt.Rows : null;
+
+        data = rows?.OfType<DataRow>()
+                       .Select(row => dt.Columns.OfType<DataColumn>()
+                       .ToDictionary(col => col.ColumnName, col => row[col]));
+        cln = new()
+        {
+            { "Status", data is null ? "Order not found" : "Success"},
+            { "StatusCode", data is null ? StatusCodes.Status204NoContent: StatusCodes.Status200OK },
+            { "Data", data }
+        };
+        return Results.Ok(cln);
+    }
+    catch (Exception ex)
+    {
+        // Return internal server error response
+        ProblemDetails problemDetails = new()
+        {
+            Status = StatusCodes.Status500InternalServerError,
+            Title = $"Internal Server Error : {ex.Message}",
             Detail = ex.ToString()
         };
         return Results.Problem(problemDetails);
