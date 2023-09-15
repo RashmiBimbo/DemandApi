@@ -12,9 +12,7 @@ Func<string, IResult> BadRequest = (x) => Results.Problem(detail: $"{x} is inval
 
 Predicate<string> CEmp = x => string.IsNullOrEmpty(x);
 
-//var option = new DbContextOptionsBuilder<DemandDb>().;
-
-var conn = new SqlConnection("Server=10.10.1.138;Database=BBIDemand;User ID=sa;Password='=*fj9*N*uLBRNZV';MultipleActiveResultSets = true");
+var conn = new SqlConnection("Server=10.10.1.138; Database=BBIDemand; User ID=sa; Password='=*fj9*N*uLBRNZV'; MultipleActiveResultSets = true");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -133,7 +131,7 @@ app.MapPost("/itemlist", async (HttpContext context) =>
         // Extract data from request
         //if(context.Request.ContentType == "") 
 
-        if (requestData is null) return Results.BadRequest("Request are invalid");
+        if (requestData is null) return Results.BadRequest("Request is invalid");
 
         string subCompanyId = requestData["subCompanyId"];
         string itemGroupId = requestData["itemGroupId"];
@@ -207,7 +205,7 @@ app.MapPost("/customerlist", async (HttpContext context) =>
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
 
-        if (requestData is null) return Results.BadRequest("Request are invalid");
+        if (requestData is null) return Results.BadRequest("Request is invalid");
 
         string subCompanyId = requestData["subCompanyId"];
         string supervisorCode = requestData["supervisorCode"];
@@ -281,10 +279,10 @@ app.MapPut("/updateDemand", async (HttpContext context) =>
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
 
-        if (requestData is null) return Results.BadRequest("Request are invalid");
+        if (requestData is null) return Results.BadRequest("Request is invalid");
 
         string CustomerId = requestData["CustomerId"];
-        var clnStr = requestData["ItemDetails"][0];
+        var clnStr = requestData["Collection"][0];
         string orderNo = requestData["OrderNo"];
 
 
@@ -302,7 +300,7 @@ app.MapPut("/updateDemand", async (HttpContext context) =>
                 new SqlParameter[]
                 {
                     new SqlParameter("@CustomerId", CustomerId),
-                    new SqlParameter("@Collection", arr),
+                    new SqlParameter("@Collection", arr.ToUpper()),
                     new SqlParameter("@OrderNo", orderNo)
                 }
             );
@@ -344,7 +342,7 @@ app.MapPost("/orderList", async (HttpContext context) =>
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
 
-        if (requestData is null) return Results.BadRequest("Request are invalid");
+        if (requestData is null) return Results.BadRequest("Request is invalid");
 
         string CustomerId = requestData["CustomerId"];
         string date = requestData["date"];
