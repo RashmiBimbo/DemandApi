@@ -38,8 +38,6 @@ app.MapPost("/SavePaymentCollection", async (HttpContext context) =>
         // Define the SQL query
         int i;
         dynamic requestData = null;
-        if (context.Request.ContentType == "application/json")
-            requestData = await context.Request.ReadFromJsonAsync(type: new string("").GetType());
 
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
@@ -122,8 +120,6 @@ app.MapPost("/itemlist", async (HttpContext context) =>
     try
     {
         dynamic requestData = null;
-        if (context.Request.ContentType == "application/json")
-            requestData = await context.Request.ReadFromJsonAsync(type: new string("").GetType());
 
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
@@ -199,8 +195,6 @@ app.MapPost("/customerlist", async (HttpContext context) =>
     { // Extract data from request
         //var requestData = await context.Request.ReadFromJsonAsync<Demand>();
         dynamic requestData = null;
-        if (context.Request.ContentType == "application/json")
-            requestData = await context.Request.ReadFromJsonAsync(type: new string("").GetType());
 
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
@@ -273,8 +267,6 @@ app.MapPut("/updateDemand", async (HttpContext context) =>
         //var requestData = await context.Request.ReadFromJsonAsync<Demand>();
         dynamic requestData = null;
         dynamic msg;
-        if (context.Request.ContentType == "application/json")
-            requestData = await context.Request.ReadFromJsonAsync(type: new string("").GetType());
 
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
@@ -336,8 +328,6 @@ app.MapPost("/orderList", async (HttpContext context) =>
     {
         //var requestData = await context.Request.ReadFromJsonAsync<Demand>();
         dynamic requestData = null;
-        if (context.Request.ContentType == "application/json")
-            requestData = await context.Request.ReadFromJsonAsync(type: new string("").GetType());
 
         if (context.Request.ContentType == "application/x-www-form-urlencoded")
             requestData = await context.Request.ReadFormAsync();
@@ -395,6 +385,47 @@ app.MapPost("/orderList", async (HttpContext context) =>
     }
 });
 
+app.MapPost("/appVersion", async (HttpContext context) =>
+{
+    string latestAppVrsn;
+    try
+    {
+        dynamic requestData = null;
+
+        if (context.Request.ContentType == "application/x-www-form-urlencoded")
+            requestData = await context.Request.ReadFormAsync();
+
+        if (requestData is null) return Results.BadRequest("Request is invalid");
+
+        string AppVersion = requestData["AppVersion"];
+
+        if (CEmp(AppVersion)) return BadRequest("AppVersion");
+
+        using (SqlCommand cmd = new("[SP_GetAppVersion]", conn))
+        {
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandTimeout = 50;
+            conn.Open();
+            latestAppVrsn = cmd.ExecuteScalar() as string;
+        }
+        return Results.Ok(AppVersion.Equals(latestAppVrsn) ? "Updated" : "Not Updated");
+    }
+    catch (Exception ex)
+    {
+        // Return internal server error response
+        ProblemDetails problemDetails = new()
+        {
+            Status = StatusCodes.Status500InternalServerError,
+            Title = $"Internal Server Error : {ex.Message}",
+            Detail = ex.ToString()
+        };
+        return Results.Problem(problemDetails);
+    }
+    finally
+    {
+        conn.Close();
+    }
+});
 app.UseHttpsRedirection();
 app.Run();
 
